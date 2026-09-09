@@ -18,10 +18,11 @@ def prepare_audio(file_path, voice=DEFAULT_VOICE, engine=None, progress_cb=None)
     text, meta = parse(file_path)
     chunks_text = chunk(text)
     chunks_audio = []
-    # engine résolu UNE fois avant la boucle (fail-safe: piper sauf voix edge connue / env override)
+    # engine résolu UNE fois avant la boucle (whitelist: disque > env > catalogue > défaut piper)
     resolved_engine = engine or os.environ.get("TTS_ENGINE", "").lower() or None
     if resolved_engine not in ("piper", "edge"):
         resolved_engine = get_engine(voice) if engine is None and not os.environ.get("TTS_ENGINE") else (resolved_engine or get_engine(voice))
+    edge_chunks = 0
     for i, ctext in enumerate(chunks_text):
         h = text_hash(ctext)
         cached = get_cached_audio(h, voice, resolved_engine)
@@ -31,8 +32,10 @@ def prepare_audio(file_path, voice=DEFAULT_VOICE, engine=None, progress_cb=None)
             if progress_cb:
                 progress_cb(i, len(chunks_text), f"Synthese chunk {i+1}/{len(chunks_text)} ({resolved_engine})")
             out_path = audio_path(h, voice, resolved_engine)
-            synthesize(ctext, str(out_path), voice, engine=resolved_engine)
+            synthesize(ctext, str(out_path), voice, engine=resolved_engine, file_path=str(file_path))
             chunks_audio.append(str(out_path))
+            if resolved_engine == "edge":
+                edge_chunks += 1
             if progress_cb:
                 progress_cb(i + 1, len(chunks_text), f"Chunk {i+1}/{len(chunks_text)} pret")
     return {
@@ -41,6 +44,7 @@ def prepare_audio(file_path, voice=DEFAULT_VOICE, engine=None, progress_cb=None)
         "title": meta.get("title", Path(file_path).stem),
         "meta": meta,
         "engine": resolved_engine,
+        "edge_chunks": edge_chunks,
     }
 
 

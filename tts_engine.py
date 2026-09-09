@@ -13,6 +13,7 @@ Voix:
 """
 import asyncio
 import hashlib
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -33,16 +34,16 @@ PITCH = "+0Hz"
 
 
 def get_engine(voice: Optional[str] = None) -> str:
-    """Détermine le backend. WHITELIST STRICTE: edge SEULEMENT si (a) env TTS_ENGINE=edge explicite,
-    ou (b) voix dans le catalogue edge connu ET pas une voix piper disponible.
-    Toute voix inconnue/custom/faute de frappe → piper. Jamais de fallback silencieux vers edge."""
-    # 1. env override explicite (le seul chemin vers edge sans voix edge connue)
+    """Détermine le backend. PRIORITÉ: voix piper locale D'ABORD (le disque gagne sur tout),
+    puis catalogue edge, puis défaut piper. L'env TTS_ENGINE ne peut PAS forcer edge
+    pour une voix piper connue — protection contre un TTS_ENGINE=edge oublié dans un .bashrc."""
+    # 1. voix locale piper disponible → piper, INCONDITIONNELLEMENT (le disque est la source de vérité)
+    if voice and voice in local_voices():
+        return "piper"
+    # 2. env override: peut basculer vers edge UNIQUEMENT pour des voix qui ne sont pas locales
     engine_env = __import__("os").environ.get("TTS_ENGINE", "").lower()
     if engine_env in ("piper", "edge"):
         return engine_env
-    # 2. voix locale piper disponible → piper (source de vérité = disque)
-    if voice and voice in local_voices():
-        return "piper"
     # 3. voix du catalogue edge strict (whitelist)
     if voice and voice in EDGE_KNOWN_VOICES:
         return "edge"
@@ -102,21 +103,44 @@ async def _synthesize(text: str, output_path: str, voice: str = DEFAULT_VOICE,
 
 
 def synthesize(text: str, output_path: str, voice: str = DEFAULT_VOICE,
-               engine: Optional[str] = None) -> str:
+               engine: Optional[str] = None, file_path: str = "") -> str:
     """
     Route vers le bon backend. Retourne le path de l'audio généré.
     engine: 'piper' (local) ou 'edge' (Microsoft). Défaut: auto-détecté par la voix.
+    file_path: source du document (pour l'audit log edge).
     """
     engine = engine or get_engine(voice)
     if engine == "piper":
         return _piper_synthesize(text, output_path)
     # edge: confirmation explicite — ce texte part chez un tiers, visible en usage réel
     print(f"\033[33m⚠️  EDGE-TTS (distant): ce chunk part chez Microsoft ({len(text)} chars, voix {voice})\033[0m", flush=True)
+    # audit log persistant: quels documents/chunks ont transité par Microsoft
+    _log_edge_usage(text, voice, file_path)
     if shutil.which("python3") is None:
         raise RuntimeError("python3 introuvable pour edge-tts")
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     asyncio.run(_synthesize(text, output_path, voice))
     return output_path
+
+
+def _log_edge_usage(text: str, voice: str, file_path: str = "") -> None:
+    """Log d'audit persistant: chaque chunk envoyé à Microsoft est tracé.
+    Permet de répondre après coup à 'est-ce que tel document a fuit'."""
+    try:
+        log_path = Path(__file__).parent / "cache" / "edge_usage.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        import time
+        entry = {
+            "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "file": file_path or "unknown",
+            "chars": len(text),
+            "voice": voice,
+            "text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
+        }
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass  # l'audit ne doit jamais bloquer la synthèse
 
 
 def voice_id(voice: str = DEFAULT_VOICE) -> str:
