@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Pipeline: orchestre parser -> chunker -> tts_engine -> cache."""
+"""Pipeline: orchestre parser -> chunker -> tts_engine -> cache (scopé par backend)."""
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional, Callable
+from typing import Optional, Callable
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -18,27 +18,29 @@ def prepare_audio(file_path, voice=DEFAULT_VOICE, engine=None, progress_cb=None)
     text, meta = parse(file_path)
     chunks_text = chunk(text)
     chunks_audio = []
-    resolved_engine = engine or os.environ.get("TTS_ENGINE") or None
+    # engine résolu UNE fois avant la boucle (fail-safe: piper sauf voix edge connue / env override)
+    resolved_engine = engine or os.environ.get("TTS_ENGINE", "").lower() or None
+    if resolved_engine not in ("piper", "edge"):
+        resolved_engine = get_engine(voice) if engine is None and not os.environ.get("TTS_ENGINE") else (resolved_engine or get_engine(voice))
     for i, ctext in enumerate(chunks_text):
         h = text_hash(ctext)
-        cached = get_cached_audio(h, voice)
+        cached = get_cached_audio(h, voice, resolved_engine)
         if cached:
             chunks_audio.append(str(cached))
         else:
             if progress_cb:
-                progress_cb(i, len(chunks_text), f"Synthese chunk {i+1}/{len(chunks_text)}")
-            out_path = audio_path(h, voice)
+                progress_cb(i, len(chunks_text), f"Synthese chunk {i+1}/{len(chunks_text)} ({resolved_engine})")
+            out_path = audio_path(h, voice, resolved_engine)
             synthesize(ctext, str(out_path), voice, engine=resolved_engine)
             chunks_audio.append(str(out_path))
             if progress_cb:
                 progress_cb(i + 1, len(chunks_text), f"Chunk {i+1}/{len(chunks_text)} pret")
-    final_engine = resolved_engine or get_engine(voice)
     return {
         "chunks_text": chunks_text,
         "chunks_audio": chunks_audio,
         "title": meta.get("title", Path(file_path).stem),
         "meta": meta,
-        "engine": final_engine,
+        "engine": resolved_engine,
     }
 
 

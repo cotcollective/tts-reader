@@ -7,9 +7,18 @@ Lecteur de documents avec synthèse vocale — webapp Flask locale qui transform
 | Backend | Qualité | Où va ton texte | Clé API | Modèle |
 |---|---|---|---|---|
 | **piper** (défaut) | Très bonne | **Nulle part — 100% local, offline** | aucune | `fr_FR-siwis-medium` (incluse) |
-| **edge** | Excellente (neurale) | **Chez Microsoft** (`speech.platform.bing.com`), en clair | aucune | fr-CA-SylvieNeural + 300 voix |
+| **edge** | Excellente (neurale) | **Chez Microsoft** (`speech.platform.bing.com`) | aucune | fr-CA-SylvieNeural + 300 voix |
 
-**Important**: le package `edge-tts` n'est PAS local. Il fait du reverse-engineering de l'API "Read Aloud" de Microsoft Edge — ton texte part en HTTPS vers les serveurs Azure à chaque chunk. "Sans clé API" ≠ "local". Pour des documents sensibles (contrats, dossiers médicaux, notes privées), utilise **piper** — le texte ne quitte jamais ta machine.
+**Important**: le package `edge-tts` n'est PAS local. Il fait du reverse-engineering de l'API "Read Aloud" de Microsoft Edge — ton texte est **envoyé à un tiers** (Microsoft) à chaque chunk. Le canal est chiffré (HTTPS), mais le risque n'est pas le transport: c'est que Microsoft reçoit ton texte sans contrat applicable à cet usage non-officiel (endpoint reverse-engineered = pas de ToS couvrant ton cas, pas de garantie de rétention, de logging ou de traitement). "Sans clé API" ≠ "local". Pour des documents sensibles (contrats, dossiers médicaux, notes privées), utilise **piper** — le texte ne quitte jamais ta machine.
+
+**Fail-safe**: le backend est résolu au niveau du code, pas juste de la doc — une voix inconnue ou custom tombe sur **piper** (local). Seules les voix du catalogue edge strict (`EDGE_KNOWN_VOICES` dans tts_engine.py) ou un `TTS_ENGINE=edge` explicite déclenchent l'envoi à Microsoft.
+
+**Cache séparé par backend** — parce que la confidentialité perdue en amont ne se rapatrie pas:
+```
+~/.tts_reader_cache/audio/piper/   ← audio 100% local, jamais sorti
+~/.tts_reader_cache/audio/edge/    ← audio dont le texte a voyagé chez Microsoft une fois
+```
+Le mal est fait au moment de la synthèse edge, pas au moment du cache — mais la séparation rend visuellement évident ce qui a voyagé. Pour purger tout ce qui a transité par Microsoft: `rm -rf ~/.tts_reader_cache/audio/edge/`.
 
 ## Features
 
@@ -105,9 +114,9 @@ tts_reader/
 
 ## Privacy
 
-- **piper**: rien ne quitte ta machine. Le modèle ONNX tourne en local, sur CPU.
-- **edge-tts**: le texte des chunks est envoyé en clair à Microsoft. Ne PAS utiliser pour du contenu sensible.
-- Le cache audio local (`.tts_reader_cache/`) contient le texte sous forme audio — le traiter comme un document sensé.
+- **piper**: rien ne quitte ta machine. Le modèle ONNX tourne en local, sur CPU. Cache: `.tts_reader_cache/audio/piper/`.
+- **edge-tts**: le texte des chunks est envoyé à Microsoft (tiers). L'endpoint est reverse-engineered: pas de ToS applicable, pas de garantie de rétention/logging de leur côté. Cache séparé: `.tts_reader_cache/audio/edge/` — purge avec `rm -rf ~/.tts_reader_cache/audio/edge/` si tu veux supprimer toute trace locale de contenu ayant transité.
+- Le cache audio local contient le texte sous forme audio — le traiter comme un document sensé.
 
 ## License
 

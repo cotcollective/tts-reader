@@ -33,13 +33,24 @@ PITCH = "+0Hz"
 
 
 def get_engine(voice: Optional[str] = None) -> str:
-    """Détermine le backend: la voix edge-* → edge, sinon piper."""
+    """Détermine le backend. FAIL-SAFE: par défaut piper (local) sauf preuve explicite que la voix est edge."""
+    # 1. env override explicite (le seul chemin vers edge sans voix edge connue)
     engine_env = __import__("os").environ.get("TTS_ENGINE", "").lower()
     if engine_env in ("piper", "edge"):
         return engine_env
-    if voice and voice.startswith(("fr-", "en-")) and "Neural" in voice:
+    # 2. voix connue du catalogue edge UNIQUEMENT (match strict, pas de heuristique loose)
+    if voice and voice in EDGE_KNOWN_VOICES:
         return "edge"
+    # 3. défaut fail-safe: local
     return DEFAULT_ENGINE
+
+
+# Catalogue strict des voix edge (les plus utilisées). Toute autre voix → piper (fail-safe local).
+# Pour étendre: edge-tts --list-voices
+EDGE_KNOWN_VOICES = {
+    "fr-CA-SylvieNeural", "fr-CA-AntoineNeural", "fr-FR-DeniseNeural", "fr-FR-HenriNeural",
+    "en-US-JennyNeural", "en-US-GuyNeural", "en-US-AriaNeural", "en-GB-SoniaNeural",
+}
 
 
 # ---------- piper (local) ----------

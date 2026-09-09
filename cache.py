@@ -28,16 +28,19 @@ def _ensure_dirs():
         BOOKMARK_FILE.write_text("{}")
 
 
-def audio_path(text_hash: str, voice: str) -> Path:
-    """Path du fichier audio cachée pour un chunk donné."""
+def audio_path(text_hash: str, voice: str, engine: str = "") -> Path:
+    """Path du fichier audio cachée — SOUS-DOSSIER PAR BACKEND (privé vs a-voyagé-chez-Microsoft)."""
     _ensure_dirs()
     safe_voice = voice.replace("/", "_").replace("+", "")
-    return AUDIO_DIR / f"{text_hash}_{safe_voice}.mp3"
+    sub = "edge" if engine == "edge" else "piper"
+    d = AUDIO_DIR / sub
+    d.mkdir(parents=True, exist_ok=True)
+    return d / f"{text_hash}_{safe_voice}.mp3"
 
 
-def get_cached_audio(text_hash: str, voice: str) -> Optional[Path]:
-    """Retourne le path de l'audio cachée, ou None si pas en cache."""
-    p = audio_path(text_hash, voice)
+def get_cached_audio(text_hash: str, voice: str, engine: str = "") -> Optional[Path]:
+    """Retourne le path de l'audio cachée, ou None si pas en cache. Scopé par backend."""
+    p = audio_path(text_hash, voice, engine)
     return p if p.exists() else None
 
 
