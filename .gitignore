@@ -1,10 +1,7 @@
 __pycache__/
 *.pyc
 .hermes-tmp.*
-cache/*.mp3
-cache/*.wav
-cache/*.json
-cache/bookmarks*
+cache/
 venv/
 *.log
 .env

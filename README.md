@@ -98,9 +98,9 @@ tts_reader/
 ├── cache.py        # Cache audio + bookmarks persistants
 ├── player.py       # Gestion des chunks audio
 ├── cli.py          # Interface ligne de commande
-├── voices/         # Modèles piper (.onnx) — fr_FR-siwis inclus
-├── venv/           # Python env (piper-tts, flask, edge-tts...)
-└── cache/          # MP3s/WAVs générés + bookmarks (auto-créé)
+├── voices/         # Modèles piper (.onnx) — fr_FR-siwis inclus (non versionné, download HF)
+├── venv/           # Python env (piper-tts, flask, edge-tts...) (non versionné)
+└── cache/          # MP3s/WAVs + bookmarks + edge_usage.log (auto-créé, NON versionné — contient ton texte sous forme audio)
 ```
 
 ## Dépendances
