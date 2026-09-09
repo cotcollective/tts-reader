@@ -23,8 +23,9 @@ def api_load():
     if not file_path: return jsonify({"error": "file_path required"}), 400
     if not Path(file_path).exists(): return jsonify({"error": "Fichier introuvable: " + file_path}), 404
     voice = data.get("voice", DEFAULT_VOICE)
+    engine = data.get("engine")  # 'piper' | 'edge' | None (auto)
     try:
-        result = prepare_audio(file_path, voice=voice, progress_cb=lambda i,t,m: print("  ["+str(i)+"/"+str(t)+"] "+m, flush=True))
+        result = prepare_audio(file_path, voice=voice, engine=engine, progress_cb=lambda i,t,m: print("  ["+str(i)+"/"+str(t)+"] "+m, flush=True))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     STATE["file_path"] = file_path
@@ -33,9 +34,10 @@ def api_load():
     STATE["title"] = result["title"]
     STATE["meta"] = result["meta"]
     STATE["voice"] = voice
+    STATE["engine"] = result.get("engine", "piper")
     bookmark = get_bookmark(file_path)
     start_chunk = min(bookmark, len(STATE["chunks_audio"]) - 1) if STATE["chunks_audio"] else 0
-    return jsonify({"title": result["title"], "meta": result["meta"], "total_chunks": len(STATE["chunks_audio"]), "bookmark": bookmark, "start_chunk": start_chunk, "voice": voice})
+    return jsonify({"title": result["title"], "meta": result["meta"], "total_chunks": len(STATE["chunks_audio"]), "bookmark": bookmark, "start_chunk": start_chunk, "voice": voice, "engine": result.get("engine")})
 
 @app.route("/api/state", methods=["GET"])
 def api_state():

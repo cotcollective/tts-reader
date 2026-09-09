@@ -2,8 +2,12 @@ __pycache__/
 *.pyc
 .hermes-tmp.*
 cache/*.mp3
+cache/*.wav
 cache/*.json
 cache/bookmarks*
+venv/
 *.log
 .env
 .DS_Store
+voices/*.onnx
+voices/*.onnx.json

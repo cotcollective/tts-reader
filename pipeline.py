@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Pipeline: orchestre parser -> chunker -> tts_engine -> cache."""
+import os
 import sys
 from pathlib import Path
 from typing import List, Optional, Callable
@@ -8,15 +9,16 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from parser import parse
 from chunker import chunk
-from tts_engine import synthesize, DEFAULT_VOICE
+from tts_engine import synthesize, DEFAULT_VOICE, get_engine
 from cache import get_cached_audio, audio_path
 from tts_engine import text_hash
 
 
-def prepare_audio(file_path, voice=DEFAULT_VOICE, progress_cb=None):
+def prepare_audio(file_path, voice=DEFAULT_VOICE, engine=None, progress_cb=None):
     text, meta = parse(file_path)
     chunks_text = chunk(text)
     chunks_audio = []
+    resolved_engine = engine or os.environ.get("TTS_ENGINE") or None
     for i, ctext in enumerate(chunks_text):
         h = text_hash(ctext)
         cached = get_cached_audio(h, voice)
@@ -26,15 +28,17 @@ def prepare_audio(file_path, voice=DEFAULT_VOICE, progress_cb=None):
             if progress_cb:
                 progress_cb(i, len(chunks_text), f"Synthese chunk {i+1}/{len(chunks_text)}")
             out_path = audio_path(h, voice)
-            synthesize(ctext, str(out_path), voice)
+            synthesize(ctext, str(out_path), voice, engine=resolved_engine)
             chunks_audio.append(str(out_path))
-        if progress_cb:
-            progress_cb(i + 1, len(chunks_text), f"Chunk {i+1}/{len(chunks_text)} pret")
+            if progress_cb:
+                progress_cb(i + 1, len(chunks_text), f"Chunk {i+1}/{len(chunks_text)} pret")
+    final_engine = resolved_engine or get_engine(voice)
     return {
         "chunks_text": chunks_text,
         "chunks_audio": chunks_audio,
         "title": meta.get("title", Path(file_path).stem),
         "meta": meta,
+        "engine": final_engine,
     }
 
 
