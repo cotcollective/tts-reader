@@ -33,15 +33,20 @@ PITCH = "+0Hz"
 
 
 def get_engine(voice: Optional[str] = None) -> str:
-    """Détermine le backend. FAIL-SAFE: par défaut piper (local) sauf preuve explicite que la voix est edge."""
+    """Détermine le backend. WHITELIST STRICTE: edge SEULEMENT si (a) env TTS_ENGINE=edge explicite,
+    ou (b) voix dans le catalogue edge connu ET pas une voix piper disponible.
+    Toute voix inconnue/custom/faute de frappe → piper. Jamais de fallback silencieux vers edge."""
     # 1. env override explicite (le seul chemin vers edge sans voix edge connue)
     engine_env = __import__("os").environ.get("TTS_ENGINE", "").lower()
     if engine_env in ("piper", "edge"):
         return engine_env
-    # 2. voix connue du catalogue edge UNIQUEMENT (match strict, pas de heuristique loose)
+    # 2. voix locale piper disponible → piper (source de vérité = disque)
+    if voice and voice in local_voices():
+        return "piper"
+    # 3. voix du catalogue edge strict (whitelist)
     if voice and voice in EDGE_KNOWN_VOICES:
         return "edge"
-    # 3. défaut fail-safe: local
+    # 4. défaut fail-safe: local
     return DEFAULT_ENGINE
 
 
@@ -89,7 +94,7 @@ def _piper_synthesize(text: str, output_path: str) -> str:
 
 # ---------- edge-tts (distant) ----------
 async def _synthesize(text: str, output_path: str, voice: str = DEFAULT_VOICE,
-                      rate: str = RATE, pitch: str = PITCH) -> None:
+                rate: str = RATE, pitch: str = PITCH) -> None:
     """Génère un fichier MP3 via edge-tts (Microsoft Azure — texte envoyé à Microsoft)."""
     import edge_tts
     communicate = edge_tts.Communicate(text, voice=voice, rate=rate, pitch=pitch)
@@ -105,7 +110,8 @@ def synthesize(text: str, output_path: str, voice: str = DEFAULT_VOICE,
     engine = engine or get_engine(voice)
     if engine == "piper":
         return _piper_synthesize(text, output_path)
-    # edge
+    # edge: confirmation explicite — ce texte part chez un tiers, visible en usage réel
+    print(f"\033[33m⚠️  EDGE-TTS (distant): ce chunk part chez Microsoft ({len(text)} chars, voix {voice})\033[0m", flush=True)
     if shutil.which("python3") is None:
         raise RuntimeError("python3 introuvable pour edge-tts")
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
