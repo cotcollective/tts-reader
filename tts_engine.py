@@ -4,8 +4,9 @@ TTS Engine — dual backend: piper (100% local) | edge-tts (Microsoft Azure neur
 
 BACKENDS:
   - piper (défaut): 100% local, offline, voix fr_FR-siwis-medium. Texte JAMAIS envoyé dehors.
-  - edge: edge-tts (Microsoft Azure) — qualité neurale supérieure, MAIS le texte part en clair
-          vers speech.platform.bing.com. À éviter pour documents sensibles.
+  - **edge**: edge-tts (Microsoft) — qualité neurale supérieure, MAIS le texte part chez un tiers
+          (endpoint codé speech.platform.bing.com, servi par l'edge Azure → backend Azure AI Speech).
+          À éviter pour documents sensibles.
 
 Voix:
   piper: fr_FR-siwis-medium (incluse dans voices/)

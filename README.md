@@ -7,7 +7,7 @@ Lecteur de documents avec synthèse vocale — webapp Flask locale qui transform
 | Backend | Qualité | Où va ton texte | Clé API | Modèle |
 |---|---|---|---|---|
 | **piper** (défaut) | Très bonne | **Nulle part — 100% local, offline** | aucune | `fr_FR-siwis-medium` (incluse) |
-| **edge** | Excellente (neurale) | **Chez Microsoft** (`speech.platform.bing.com`) | aucune | fr-CA-SylvieNeural + 300 voix |
+| **edge** | Excellente (neurale) | **Chez Microsoft** — domaine codé `speech.platform.bing.com`, servi par l'edge Azure (Ax-FD) → backend Azure AI Speech | aucune | fr-CA-SylvieNeural + 300 voix |
 
 **Important**: le package `edge-tts` n'est PAS local. Il fait du reverse-engineering de l'API "Read Aloud" de Microsoft Edge — ton texte est **envoyé à un tiers** (Microsoft) à chaque chunk. Le canal est chiffré (HTTPS), mais le risque n'est pas le transport: c'est que Microsoft reçoit ton texte sans contrat applicable à cet usage non-officiel (endpoint reverse-engineered = pas de ToS couvrant ton cas, pas de garantie de rétention, de logging ou de traitement). "Sans clé API" ≠ "local". Pour des documents sensibles (contrats, dossiers médicaux, notes privées), utilise **piper** — le texte ne quitte jamais ta machine.
 
