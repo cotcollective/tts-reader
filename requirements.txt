@@ -1,0 +1,5 @@
+edge-tts>=7.0.0
+flask>=3.0.0
+pypdf>=4.0.0
+ebooklib>=0.18
+beautifulsoup4>=4.12.0

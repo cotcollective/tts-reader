@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.hermes-tmp.*
+cache/*.mp3
+cache/*.json
+cache/bookmarks*
+*.log
+.env
+.DS_Store
